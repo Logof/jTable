@@ -57,15 +57,42 @@
             var self = this;
 
             //Create a div for dialog and add to container element
-            self._$editDiv = $('<div></div>')
-                .appendTo(self._$mainContainer);
-
+            if (self.options.useBootstrap) {
+            	
+            	self._$editDiv.addClass("modal hide fade");
+            	self._$editDiv.css({
+            		width: 'auto'
+            	});
+            	self._$editDiv.append('<div role="document" class="modal-dialog"><div class="modal-content">'+
+            			    '<div class="modal-header">' +
+            				'<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>' +
+            				'<h3>' + self.options.messages.editRecord + '</h3></div>' +
+            				'<div class="modal-body" style="min-width: 300px;"></div>' +
+            				'<div class="modal-footer">' +
+            				'<a href="#" class="btn" data-dismiss="modal" aria-hidden="true">' + self.options.messages.cancel + '</a>' +
+            				'<a id="EditDialogSaveButton" href="#" class="save btn btn-primary">' + self.options.messages.save + '</a></div></div></div>');
+            	self._$editDiv.find(".save").click(function(event) {
+            		self._onSaveClickedOnEditForm();
+            	});
+            	
+            	self._$editDiv.modal({
+            		show: false
+            	});
+            	
+            	self._$editDiv.on("hide", function(event) {
+                    var $editForm = self._$editDiv.find('form:first');
+                    var $saveButton = self._$editDiv.parent().find('#EditDialogSaveButton');
+                    self._trigger("formClosed", null, { form: $editForm, formType: 'edit', row: self._$editingRow });
+                    self._setEnabledOfDialogButton(self.options.useBootstrap, $saveButton, true, self.options.messages.save);
+                    $editForm.remove();
+            });
+        } else {
             //Prepare dialog
             self._$editDiv.dialog({
                 autoOpen: false,
                 show: self.options.dialogShowEffect,
                 hide: self.options.dialogHideEffect,
-                width: self.options.formDialogWidth ? self.options.formDialogWidth : 'auto',
+                width: 'auto',
                 minWidth: '300',
                 modal: true,
                 title: self.options.messages.editRecord,
@@ -84,13 +111,14 @@
                         }],
                 close: function () {
                     var $editForm = self._$editDiv.find('form:first');
-                    var $saveButton = self._$editDiv.parent().find('#EditDialogSaveButton');
+                    var $saveButton = $('#EditDialogSaveButton');
                     self._trigger("formClosed", null, { form: $editForm, formType: 'edit', row: self._$editingRow });
-                    self._setEnabledOfDialogButton($saveButton, true, self.options.messages.save);
+                    self._setEnabledOfDialogButton(self.options.useBootstrap, $saveButton, true, self.options.messages.save);
                     $editForm.remove();
                 }
             });
-        },
+        }
+    },
 
         /* Saves editing form to server.
         *************************************************************************/
@@ -99,14 +127,18 @@
             
             //row maybe removed by another source, if so, do nothing
             if (self._$editingRow.hasClass('jtable-row-removed')) {
-                self._$editDiv.dialog('close');
-                return;
+                if (self.options.useBootstrap) {
+                    self._$editDiv.modal("hide");
+                } else {
+                    self._$editDiv.dialog('close');
+                }
+            	return;
             }
 
             var $saveButton = self._$editDiv.parent().find('#EditDialogSaveButton');
             var $editForm = self._$editDiv.find('form');
             if (self._trigger("formSubmitting", null, { form: $editForm, formType: 'edit', row: self._$editingRow }) != false) {
-                self._setEnabledOfDialogButton($saveButton, false, self.options.messages.saving);
+                self._setEnabledOfDialogButton(self.options.useBootstrap, $saveButton, true, self.options.messages.save);
                 self._saveEditForm($editForm, $saveButton);
             }
         },
@@ -314,8 +346,14 @@
             });
 
             //Open dialog
-            self._$editingRow = $tableRow;
-            self._$editDiv.append($editForm).dialog('open');
+            self._$editingRow = $tableRow;            
+            if (self.options.useBootstrap) {
+            	self._$editDiv.find(".modal-body").html($editForm);
+            	self._$editDiv.modal("show");
+            } else {
+            	self._$editDiv.append($editForm);
+            	self._$ediDiv.dialog('open');
+            }
             self._trigger("formCreated", null, { form: $editForm, formType: 'edit', record: record, row: $tableRow });
         },
 
@@ -327,7 +365,7 @@
             var completeEdit = function (data) {
                 if (data.Result != 'OK') {
                     self._showError(data.Message);
-                    self._setEnabledOfDialogButton($saveButton, true, self.options.messages.save);
+                    self._setEnabledOfDialogButton(self.options.useBootstrap, $saveButton, true, self.options.messages.save);
                     return;
                 }
 
@@ -345,7 +383,14 @@
                     self._showUpdateAnimationForRow(self._$editingRow);
                 }
 
-                self._$editDiv.dialog("close");
+                if (self.options.useBootstrap) {
+                    self._$editDiv.modal("hide");
+                } else {
+                    self._$editDiv.dialog("close");
+                }
+                    	
+
+                self._setEnabledOfDialogButton(self.options.useBootstrap, $saveButton, true, self.options.messages.save);
             };
 
 
@@ -362,7 +407,7 @@
                         completeEdit(data);
                     }).fail(function () {
                         self._showError(self.options.messages.serverCommunicationError);
-                        self._setEnabledOfDialogButton($saveButton, true, self.options.messages.save);
+                        self._setEnabledOfDialogButton(self.options.useBootstrap, $saveButton, true, self.options.messages.save);
                     });
                 } else { //assume it returned the creation result
                     completeEdit(funcResult);
@@ -379,7 +424,7 @@
                     },
                     function() {
                         self._showError(self.options.messages.serverCommunicationError);
-                        self._setEnabledOfDialogButton($saveButton, true, self.options.messages.save);
+                        self._setEnabledOfDialogButton(self.options.useBootstrap, $saveButton, true, self.options.messages.save);
                     });
             }
 

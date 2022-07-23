@@ -343,21 +343,37 @@
         *************************************************************************/
         _createErrorDialogDiv: function () {
             var self = this;
-
-            self._$errorDialogDiv = $('<div></div>').appendTo(self._$mainContainer);
-            self._$errorDialogDiv.dialog({
-                autoOpen: false,
-                show: self.options.dialogShowEffect,
-                hide: self.options.dialogHideEffect,
-                modal: true,
-                title: self.options.messages.error,
-                buttons: [{
-                    text: self.options.messages.close,
-                    click: function () {
-                        self._$errorDialogDiv.dialog('close');
-                    }
-                }]
-            });
+            
+            if (self.options.useBootstrap) {
+            	self._$errorDialogDiv = $('<div class="modal hide fade" style="z-index: 999999;">' +
+            		    				  '<div role="document" class="modal-dialog"><div class="modal-content">'+				  
+            							  '<div class="modal-header">' +
+            		    				  '<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>' +
+            		    				  '<h3>' + self.options.messages.error + '</h3>' +
+            		    				  '</div>' +
+            		    				  '<div class="modal-body alert"></div>' +
+            		    				  '<div class="modal-footer">' +
+            		    				  '<a href="#" class="btn" data-dismiss="modal" aria-hidden="true">' + self.options.messages.close + '</a></div>' +
+            		    				  '</div></div></div>').appendTo(self._$mainContainer);
+            	self._$errorDialogDiv.modal({
+            		show: false
+            	});
+            } else {
+	            self._$errorDialogDiv = $('<div></div>').appendTo(self._$mainContainer);
+	            self._$errorDialogDiv.dialog({
+	                autoOpen: false,
+	                show: self.options.dialogShowEffect,
+	                hide: self.options.dialogHideEffect,
+	                modal: true,
+	                title: self.options.messages.error,
+	                buttons: [{
+	                    text: self.options.messages.close,
+	                    click: function () {
+	                        self._$errorDialogDiv.dialog('close');
+	                    }
+	                }]
+	            });
+            }
         },
 
         /************************************************************************
@@ -1117,7 +1133,12 @@
         /* Shows error message dialog with given message.
         *************************************************************************/
         _showError: function (message) {
-            this._$errorDialogDiv.html(message).dialog('open');
+            if (this.options.useBootstrap) {
+        		this._$errorDialogDiv.find(".modal-body").html(message);
+        		this._$errorDialogDiv.modal("show");
+        	} else {
+                this._$errorDialogDiv.html(message).dialog('open');
+            }
         },
 
         /* BUSY PANEL ***********************************************************/
