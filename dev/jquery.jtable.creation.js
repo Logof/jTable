@@ -56,36 +56,67 @@
             self._$addRecordDiv = $('<div />')
                 .appendTo(self._$mainContainer);
 
-            //Prepare dialog
-            self._$addRecordDiv.dialog({
-                autoOpen: false,
-                show: self.options.dialogShowEffect,
-                hide: self.options.dialogHideEffect,
-                width: self.options.formDialogWidth ? self.options.formDialogWidth : 'auto',
-                minWidth: '300',
-                modal: true,
-                title: self.options.messages.addNewRecord,
-                buttons:
-                        [{ //Cancel button
-                            text: self.options.messages.cancel,
-                            click: function () {
-                                self._$addRecordDiv.dialog('close');
-                            }
-                        }, { //Save button
-                            id: 'AddRecordDialogSaveButton',
-                            text: self.options.messages.save,
-                            click: function () {
-                                self._onSaveClickedOnCreateForm();
-                            }
-                        }],
-                close: function () {
+            if (self.options.useBootstrap) {
+                self._$addRecordDiv.addClass("modal hide fade");
+                self._$addRecordDiv.css({
+                    width: 'auto'
+                });
+                self._$addRecordDiv.append('<div role="document" class="modal-dialog"><div class="modal-content">'+
+                                '<div class="modal-header">' +
+                                '<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>' +
+                                '<h3>' + self.options.messages.addNewRecord + '</h3></div>' +
+                                '<div class="modal-body" style="min-width: 300px;"></div>' +
+                                '<div class="modal-footer">' +
+                                '<a href="#" class="btn" data-dismiss="modal" aria-hidden="true">' + self.options.messages.cancel + '</a>' +
+                                '<a id="AddRecordDialogSaveButton" href="#" class="save btn btn-primary">' + self.options.messages.save + '</a></div></div></div>');
+                self._$addRecordDiv.find(".save").click(function(event) {
+                    self._onSaveClickedOnCreateForm();
+                });
+                    
+                self._$addRecordDiv.modal({
+                    show: false
+                });
+    
+                var event = self._getHiddenEvent();
+                self._$addRecordDiv.on(event, function(event) {
                     var $addRecordForm = self._$addRecordDiv.find('form').first();
                     var $saveButton = self._$addRecordDiv.parent().find('#AddRecordDialogSaveButton');
                     self._trigger("formClosed", null, { form: $addRecordForm, formType: 'create' });
-                    self._setEnabledOfDialogButton($saveButton, true, self.options.messages.save);
+                    self._setEnabledOfDialogButton(self.options.useBootstrap, $saveButton, true, self.options.messages.save);
                     $addRecordForm.remove();
-                }
-            });
+                });
+            } else {
+	            //Prepare dialog
+	            self._$addRecordDiv.dialog({
+	                autoOpen: false,
+	                show: self.options.dialogShowEffect,
+	                hide: self.options.dialogHideEffect,
+	                width: 'auto',
+	                minWidth: '300',
+	                modal: true,
+	                title: self.options.messages.addNewRecord,
+	                buttons:
+	                        [{ //Cancel button
+	                            text: self.options.messages.cancel,
+	                            click: function () {
+	                                self._$addRecordDiv.dialog('close');
+	                            }
+	                        }, { //Save button
+	                            id: 'AddRecordDialogSaveButton',
+	                            text: self.options.messages.save,
+	                            click: function () {
+	                                self._onSaveClickedOnCreateForm();
+	                            }
+	                        }],
+	                close: function () {
+	                    var $addRecordForm = self._$addRecordDiv.find('form').first();
+	                    var $saveButton = $('#AddRecordDialogSaveButton');
+	                    self._trigger("formClosed", null, { form: $addRecordForm, formType: 'create' });
+	                    self._setEnabledOfDialogButton(self.options.useBootstrap, $saveButton, true, self.options.messages.save);
+	                    $addRecordForm.remove();
+	                }
+	            });
+            }
 
             if (self.options.addRecordButton) {
                 //If user supplied a button, bind the click event to show dialog form
@@ -113,9 +144,23 @@
             var $addRecordForm = self._$addRecordDiv.find('form');
 
             if (self._trigger("formSubmitting", null, { form: $addRecordForm, formType: 'create' }) != false) {
-                self._setEnabledOfDialogButton($saveButton, false, self.options.messages.saving);
+                self._setEnabledOfDialogButton(self.options.useBootstrap, $saveButton, false, self.options.messages.saving);
                 self._saveAddRecordForm($addRecordForm, $saveButton);
             }
+        },
+
+        /* Gets hidden event signature according bootstrap version
+         ***********************************************************/
+        _getHiddenEvent: function() {
+        	//	Detects if Bootstrap 2 or 3 is used because hidden event is different in each version.
+        	var pluginFn = $.fn["modal"];
+        	var event = "hidden";
+        	if (pluginFn && pluginFn.toString().indexOf('bs.modal') > -1) {
+				// Bootstrap 2 doesn't use namespace on modal data (at least for now...)
+				event += ".bs.modal";
+    		}
+
+        	return event;
         },
 
         /************************************************************************
@@ -272,7 +317,12 @@
             });
 
             //Open the form
-            self._$addRecordDiv.append($addRecordForm).dialog('open');
+            if (self.options.useBootstrap) {
+            	self._$addRecordDiv.find(".modal-body").append($addRecordForm);
+            	self._$addRecordDiv.modal("show");
+            } else {
+            	self._$addRecordDiv.append($addRecordForm).dialog('open');
+            }
             self._trigger("formCreated", null, { form: $addRecordForm, formType: 'create' });
         },
 
@@ -284,13 +334,13 @@
             var completeAddRecord = function (data) {
                 if (data.Result != 'OK') {
                     self._showError(data.Message);
-                    self._setEnabledOfDialogButton($saveButton, true, self.options.messages.save);
+                    self._setEnabledOfDialogButton(self.options.useBootstrap, $saveButton, true, self.options.messages.save);
                     return;
                 }
 
                 if (!data.Record) {
                     self._logError('Server must return the created Record object.');
-                    self._setEnabledOfDialogButton($saveButton, true, self.options.messages.save);
+                    self._setEnabledOfDialogButton(self.options.useBootstrap, $saveButton, true, self.options.messages.save);
                     return;
                 }
 
@@ -298,8 +348,12 @@
                 self._addRow(
                     self._createRowFromRecord(data.Record), {
                         isNewRow: true
-                    });
-                self._$addRecordDiv.dialog("close");
+                });
+                if (self.options.useBootstrap)
+                    self._$addRecordDiv.modal("hide");
+                else {
+                    self._$addRecordDiv.dialog("close");
+                }
             };
 
             $addRecordForm.data('submitting', true); //TODO: Why it's used, can remove? Check it.
@@ -317,7 +371,7 @@
                         completeAddRecord(data);
                     }).fail(function () {
                         self._showError(self.options.messages.serverCommunicationError);
-                        self._setEnabledOfDialogButton($saveButton, true, self.options.messages.save);
+                        self._setEnabledOfDialogButton(self.options.useBootstrap, $saveButton, true, self.options.messages.save);
                     });
                 } else { //assume it returned the creation result
                     completeAddRecord(funcResult);
@@ -334,7 +388,7 @@
                     },
                     function () {
                         self._showError(self.options.messages.serverCommunicationError);
-                        self._setEnabledOfDialogButton($saveButton, true, self.options.messages.save);
+                        self._setEnabledOfDialogButton(self.options.useBootstrap, $saveButton, true, self.options.messages.save);
                     });
             }
         },
